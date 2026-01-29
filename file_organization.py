@@ -1,7 +1,12 @@
+import os
+import shutil
+
 class FileOrganization:
 
-    def __init__(self, list_files):
-        self._list_files = list_files
+    def __init__(self, source_file_path):
+        # self._source_folder = os.path.join(os.getcwd(), "Source Files")
+        # self._list_files = list_files
+        self._source_file_path = source_file_path
         self._list_word_doc_files = []
         self._order = 1
         self._spouse_one = ""
@@ -27,37 +32,67 @@ class FileOrganization:
         self._find_docx_files()
         self._get_spouse_one()
 
-        self._single_docs = [
-            self._portfolio_inserts,
-            self._fiduciary_distribution_summary,
-            self._trust_quick_reference_page,
-            self._trust_summary,
-            self._rlt,
-            self._cert_of_trust
+        # self._single_docs = [
+        #     self._portfolio_inserts,
+        #     self._fiduciary_distribution_summary,
+        #     self._trust_quick_reference_page,
+        #     self._trust_summary,
+        #     self._rlt,
+        #     self._cert_of_trust,
+        #     self._funding_instructions
+        # ]
+        #
+        # self._file_order = [
+        #     self._portfolio_inserts,
+        #     self._fiduciary_distribution_summary,
+        #     self._trust_quick_reference_page,
+        #     self._trust_summary,
+        #     self._rlt,
+        #     self._pour_over_will,
+        #     self._funding_instructions,
+        #     self._power_of_attorney,
+        #     self._cert_of_trust,
+        #     self._assign_of_personal_property,
+        #     self._ahcd,
+        #     self._hippa,
+        #     self._conservatorship,
+        #     self._remembrance_memorandum,
+        #     self._personal_property_memo,
+        #     self._guardianship
+        # ]
+
+        self._file_order = [
+            (self._portfolio_inserts, "single"),
+            (self._fiduciary_distribution_summary, "single"),
+            (self._trust_quick_reference_page, "single"),
+            (self._trust_summary, "single"),
+            (self._rlt, "single"),
+            (self._pour_over_will, "multi"),
+            (self._funding_instructions, "single"),
+            (self._power_of_attorney, "multi"),
+            (self._cert_of_trust, "single"),
+            (self._assign_of_personal_property, "multi"),
+            (self._ahcd, "multi"),
+            (self._hippa, "multi"),
+            (self._conservatorship, "multi"),
+            (self._remembrance_memorandum, "multi"),
+            (self._personal_property_memo, "multi"),
+            (self._guardianship, "multi")
         ]
 
-        self._multi_docs = [
-            self._pour_over_will,
-            self._power_of_attorney,
-            self._assign_of_personal_property,
-            self._ahcd,
-            self._hippa,
-            self._conservatorship,
-            self._remembrance_memorandum,
-            self._personal_property_memo,
-            self._guardianship
-        ]
-
-        for doc in self._single_docs:
-            self._find_file(doc)
-
-        for doc in self._multi_docs:
-            self._find_files(doc)
+        for doc, doc_type in self._file_order:
+            if doc_type in "single":
+                self._find_file(doc)
+            else:
+                self._find_files(doc)
 
     def _find_docx_files(self):
-        for file in self._list_files:
-            if file.lower().endswith('.docx'):
-                self._list_word_doc_files.append(file)
+        if not os.path.exists(self._source_file_path):
+            print("Folder not found:", self._source_file_path)
+        else:
+            for file in os.listdir(self._source_file_path):
+                if file.endswith(".docx"):
+                    self._list_word_doc_files.append(file)
 
     def _get_spouse_one(self):
         #TODO: Check for only one cert of trust.
