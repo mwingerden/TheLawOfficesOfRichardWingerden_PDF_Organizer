@@ -1,6 +1,7 @@
 import os
-import shutil
 import logging
+from docx2pdf import convert
+from pypdf import PdfWriter
 
 class FileOrganization:
 
@@ -41,6 +42,8 @@ class FileOrganization:
             else:
                 self._find_files(doc)
 
+        self._combine_pdfs()
+
     def _find_docx_files(self):
         if not os.path.exists(self._source_file_path):
             logging.warning("Folder not found: %s", self._source_file_path)
@@ -58,11 +61,11 @@ class FileOrganization:
                 return
 
     def _copy_file(self, file):
-        new_file_name = f"{self._order}_{file}"
+        new_file_name = f"{self._order}_{os.path.splitext(file)[0]}.pdf"
         self._order += 1
         src = os.path.join(self._source_file_path, file)
-        dst = os.path.join(self._dest_file_path, new_file_name)
-        shutil.copyfile(src, dst)
+        dst_pdf = os.path.join(self._dest_file_path, new_file_name)
+        convert(src, dst_pdf)
 
     def _sort_by_spouse_one(self, files):
         return sorted(files, key=lambda x: 0 if self._spouse_one in x else 1)
@@ -71,7 +74,6 @@ class FileOrganization:
         for file in self._list_word_doc_files:
             if file_name.lower() in file.lower():
                 self._copy_file(file)
-
 
     def _find_files(self, file_name):
         files = []
@@ -83,9 +85,16 @@ class FileOrganization:
 
         for file in pour_over_will_files:
             self._copy_file(file)
-            # new_file_name = f"{self._order}_{file}"
-            # self._order += 1
-            # src = os.path.join(self._source_file_path, file)
-            # dst = os.path.join(self._dest_file_path, new_file_name)
-            #
-            # shutil.copyfile(src, dst)
+
+    def _combine_pdfs(self, output_file_name = "Combined.pdf"):
+        merger = PdfWriter()
+
+        pdf_files = sorted(
+            f for f in os.listdir(self._dest_file_path) if f.endswith(".pdf")
+        )
+        pdf_files.sort()
+        for pdf in pdf_files:
+            merger.append(os.path.join(self._dest_file_path, pdf))
+
+        merger.write(os.path.join(self._dest_file_path, output_file_name))
+        merger.close()
