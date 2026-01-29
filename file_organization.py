@@ -3,10 +3,10 @@ import shutil
 
 class FileOrganization:
 
-    def __init__(self, source_file_path):
-        # self._source_folder = os.path.join(os.getcwd(), "Source Files")
-        # self._list_files = list_files
+    def __init__(self, source_file_path, dest_file_path):
         self._source_file_path = source_file_path
+        self._dest_file_path = dest_file_path
+        os.makedirs(self._dest_file_path, exist_ok=True)
         self._list_word_doc_files = []
         self._order = 1
         self._spouse_one = ""
@@ -31,35 +31,6 @@ class FileOrganization:
     def _run_logic(self):
         self._find_docx_files()
         self._get_spouse_one()
-
-        # self._single_docs = [
-        #     self._portfolio_inserts,
-        #     self._fiduciary_distribution_summary,
-        #     self._trust_quick_reference_page,
-        #     self._trust_summary,
-        #     self._rlt,
-        #     self._cert_of_trust,
-        #     self._funding_instructions
-        # ]
-        #
-        # self._file_order = [
-        #     self._portfolio_inserts,
-        #     self._fiduciary_distribution_summary,
-        #     self._trust_quick_reference_page,
-        #     self._trust_summary,
-        #     self._rlt,
-        #     self._pour_over_will,
-        #     self._funding_instructions,
-        #     self._power_of_attorney,
-        #     self._cert_of_trust,
-        #     self._assign_of_personal_property,
-        #     self._ahcd,
-        #     self._hippa,
-        #     self._conservatorship,
-        #     self._remembrance_memorandum,
-        #     self._personal_property_memo,
-        #     self._guardianship
-        # ]
 
         self._file_order = [
             (self._portfolio_inserts, "single"),
@@ -113,10 +84,14 @@ class FileOrganization:
     def _find_file(self, file_name):
         for file in self._list_word_doc_files:
             if file_name.lower() in file.lower():
-                file = str(self._order) + "_" + file
+                # file_name = str(self._order) + "_" + file
+                new_file_name = f"{self._order}_{file}"
                 self._order += 1
-                # this is where to rename file
-                print(file)
+                src = os.path.join(self._source_file_path, file)
+                dst = os.path.join(self._dest_file_path, new_file_name)
+
+                shutil.copyfile(src, dst)
+
 
     def _find_files(self, file_name):
         files = []
@@ -127,7 +102,9 @@ class FileOrganization:
         pour_over_will_files = self._sort_by_spouse_one(files)
 
         for file in pour_over_will_files:
-            file = str(self._order) + "_" + file
+            new_file_name = f"{self._order}_{file}"
             self._order += 1
-            # this is where to rename file
-            print(file)
+            src = os.path.join(self._source_file_path, file)
+            dst = os.path.join(self._dest_file_path, new_file_name)
+
+            shutil.copyfile(src, dst)
