@@ -1,16 +1,17 @@
 import os
 import logging
 from docx2pdf import convert
-from pypdf import PdfWriter
+from pypdf import PdfWriter, PdfReader
+import tempfile
 
 class FileOrganization:
 
     def __init__(self, source_file_path, dest_file_path):
+        self._writer = PdfWriter()
         self._source_file_path = source_file_path
         self._dest_file_path = dest_file_path
         os.makedirs(self._dest_file_path, exist_ok=True)
         self._list_word_doc_files = []
-        self._order = 1
         self._spouse_one = ""
         self._file_order = [
             ("Portfolio Inserts_", "single"),
@@ -60,13 +61,6 @@ class FileOrganization:
                 # print(self.spouse_one)
                 return
 
-    def _copy_file(self, file):
-        new_file_name = f"{self._order}_{os.path.splitext(file)[0]}.pdf"
-        self._order += 1
-        src = os.path.join(self._source_file_path, file)
-        dst_pdf = os.path.join(self._dest_file_path, new_file_name)
-        convert(src, dst_pdf)
-
     def _sort_by_spouse_one(self, files):
         return sorted(files, key=lambda x: 0 if self._spouse_one in x else 1)
 
@@ -86,16 +80,23 @@ class FileOrganization:
         for file in pour_over_will_files:
             self._copy_file(file)
 
-    def _combine_pdfs(self, output_file_name = "Combined.pdf"):
-        merger = PdfWriter()
+    def _copy_file(self, file):
 
-        pdf_files = sorted(
-            (f for f in os.listdir(self._dest_file_path) if f.endswith(".pdf")),
-            key=lambda x: int(x.split("_")[0])
-        )
-        # print(pdf_files)
-        for pdf in pdf_files:
-            merger.append(os.path.join(self._dest_file_path, pdf))
+        src = os.path.join(self._source_file_path, file)
 
-        merger.write(os.path.join(self._dest_file_path, output_file_name))
-        merger.close()
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+            temp_pdf_path = tmp.name
+
+        convert(src, temp_pdf_path)
+
+        reader = PdfReader(temp_pdf_path)
+        for page in reader.pages:
+            self._writer.add_page(page)
+
+        os.remove(temp_pdf_path)
+
+    def _combine_pdfs(self, output_file_name="Combined.pdf"):
+        output_path = os.path.join(self._dest_file_path, output_file_name)
+        with open(output_path, "wb") as f:
+            self._writer.write(f)
+
