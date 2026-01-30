@@ -90,9 +90,10 @@ class FileOrganization:
         merger = PdfWriter()
 
         pdf_files = sorted(
-            f for f in os.listdir(self._dest_file_path) if f.endswith(".pdf")
+            (f for f in os.listdir(self._dest_file_path) if f.endswith(".pdf")),
+            key=lambda x: int(x.split("_")[0])
         )
-        pdf_files.sort()
+        # print(pdf_files)
         for pdf in pdf_files:
             merger.append(os.path.join(self._dest_file_path, pdf))
 
