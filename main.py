@@ -1,15 +1,17 @@
 import os
 import file_organization
+import gui
 
+gui = gui.GUI()
+folder_list = gui.run_gui()
+
+print(folder_list)
+
+# root.mainloop()
 # source_file_path = os.path.join(os.getcwd(), "Source Files")
 # destination_folder = os.path.join(os.getcwd(), "Modified Files")
 
-source_file_path = os.path.join(os.getcwd(), "Test Source Files")
-destination_folder = os.path.join(os.getcwd(), "Test Modified Files")
-# list_word_doc_files = doc_file_logic.set_up(list_files)
+# source_file_path = os.path.join(os.getcwd(), "Test Source Files")
+# destination_folder = os.path.join(os.getcwd(), "Test Modified Files")
 
-# for file in list_word_doc_files:
-#     print(file)
-
-# doc_file_logic.run_logic(list_files)
-file_organization.FileOrganization(source_file_path, destination_folder)
+file_organization.FileOrganization(folder_list[0], folder_list[1])

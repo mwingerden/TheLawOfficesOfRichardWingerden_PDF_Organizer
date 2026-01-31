@@ -31,11 +31,13 @@ class FileOrganization:
             ("Personal Property Memo", "multi"),
             ("California Nomination of Guardian_", "multi")
         ]
+        self._combined_file_name = "Combined.pdf"
         self._process_files()
 
     def _process_files(self):
         self._find_docx_files()
         self._get_spouse_one()
+        self._find_rlt()
 
         for doc, doc_type in self._file_order:
             if doc_type == "single":
@@ -60,6 +62,11 @@ class FileOrganization:
                 self._spouse_one = file.removesuffix(".docx").split("_", 1)[1]
                 # print(self.spouse_one)
                 return
+
+    def _find_rlt(self):
+        for file in self._list_word_doc_files:
+            if "RLT".lower() in file.lower():
+                self._combined_file_name = file
 
     def _sort_by_spouse_one(self, files):
         return sorted(files, key=lambda x: 0 if self._spouse_one in x else 1)
@@ -95,8 +102,8 @@ class FileOrganization:
 
         os.remove(temp_pdf_path)
 
-    def _combine_pdfs(self, output_file_name="Combined.pdf"):
-        output_path = os.path.join(self._dest_file_path, output_file_name)
+    def _combine_pdfs(self):
+        output_path = os.path.join(self._dest_file_path, self._combined_file_name.replace(".docx", ".pdf"))
         with open(output_path, "wb") as f:
             self._writer.write(f)
 
