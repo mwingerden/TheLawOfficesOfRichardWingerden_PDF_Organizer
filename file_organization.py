@@ -3,6 +3,8 @@ import logging
 from docx2pdf import convert
 from pypdf import PdfWriter, PdfReader
 import tempfile
+import tkinter as tk
+from tkinter import messagebox
 
 class FileOrganization:
 
@@ -14,38 +16,57 @@ class FileOrganization:
         self._list_word_doc_files = []
         self._spouse_one = ""
         self._file_order = [
-            ("Portfolio Inserts_", "single"),
+            ("Portfolio Inserts", "single"),
             ("Fiduciary and Distribution Summary", "single"),
-            ("Trust Quick Reference Page_", "single"),
-            ("Trust Summary_", "single"),
+            ("Trust Quick Reference Page", "single"),
+            ("Trust Summary", "single"),
             ("RLT", "single"),
-            ("Pour-Over Will_", "multi"),
-            ("Funding Instructions -", "single"),
-            ("Power of Attorney_", "multi"),
-            ("California Certification of Trust_", "single"),
-            ("Assignment of Personal Property_", "multi"),
-            ("California Advance Health Care Directive_", "multi"),
-            ("California HIPAA Authorization_", "multi"),
-            ("California Nomination of Conservator_", "multi"),
-            ("Remembrance and Services Memorandum_", "multi"),
+            ("Pour-Over Will", "multi"),
+            ("Funding Instructions", "single"),
+            ("Power of Attorney", "multi"),
+            ("California Certification of Trust", "single"),
+            ("Assignment of Personal Property", "multi"),
+            ("California Advance Health Care Directive", "multi"),
+            ("California HIPAA Authorization", "multi"),
+            ("California Nomination of Conservator", "multi"),
+            ("Remembrance and Services Memorandum", "multi"),
             ("Personal Property Memo", "multi"),
-            ("California Nomination of Guardian_", "multi")
+            ("California Nomination of Guardian", "multi")
         ]
         self._combined_file_name = "Combined.pdf"
-        self._process_files()
-
-    def _process_files(self):
         self._find_docx_files()
-        self._get_spouse_one()
-        self._find_rlt()
 
-        for doc, doc_type in self._file_order:
-            if doc_type == "single":
-                self._find_file(doc)
-            else:
-                self._find_files(doc)
+    def process_files(self):
+        if self._find_docx_files() and self._check_files():
+            self._get_spouse_one()
+            self._find_rlt()
 
-        self._combine_pdfs()
+            for doc, doc_type in self._file_order:
+                if doc_type == "single":
+                    self._find_file(doc)
+                else:
+                    self._find_files(doc)
+
+            self._combine_pdfs()
+            return True
+        else:
+            return False
+
+    def _check_files(self):
+        missing = [
+            base for base, base_type in self._file_order
+            if not any(filled_file.startswith(base) for filled_file in self._list_word_doc_files)
+        ]
+
+        if not missing:
+            return True
+        else:
+            message = (
+                    "The following required files are missing:\n\n"
+                    + "\n".join(f"• {name}" for name in missing)
+            )
+            tk.messagebox.showwarning("Warning", message)
+            return False
 
     def _find_docx_files(self):
         if not os.path.exists(self._source_file_path):
@@ -55,12 +76,20 @@ class FileOrganization:
                 f for f in os.listdir(self._source_file_path) if f.endswith(".docx")
             ]
 
+        if not self._list_word_doc_files:
+            messagebox.showerror(
+                "Error",
+                "No .docx files were found in the selected folder."
+            )
+            return False
+        else:
+            return True
+
     def _get_spouse_one(self):
         #TODO: Check for only one cert of trust.
         for file in self._list_word_doc_files:
-            if "California Certification of Trust_" in file:
+            if "California Certification of Trust" in file:
                 self._spouse_one = file.removesuffix(".docx").split("_", 1)[1]
-                # print(self.spouse_one)
                 return
 
     def _find_rlt(self):

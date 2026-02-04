@@ -50,7 +50,9 @@ class GUI:
 
     def _run_file_organizer(self):
         if self._source_folder and self._dest_folder:
-            file_organization.FileOrganization(self._source_folder, self._dest_folder)
-            self._root.destroy()
+            temp = file_organization.FileOrganization(self._source_folder, self._dest_folder)
+            if temp.check_files():
+                temp.process_files()
+                self._root.destroy()
         else:
             tk.messagebox.showwarning("Warning", "Please select both folders!")
