@@ -1,5 +1,3 @@
-from random import choice
-
 import file_organization
 import tkinter as tk
 from tkinter.constants import DISABLED, NORMAL
@@ -37,8 +35,9 @@ class GUI:
         self._radio_button_frame = tk.Frame(self._frame)
         self._radio_button_frame.grid(row=1, column=0, padx=10, pady=10)
         self._trust_type = tk.StringVar(value="-1")
-        tk.Radiobutton(self._radio_button_frame,text="Joint", variable=self._trust_type, value="1").grid(row=0, column=0)
-        tk.Radiobutton(self._radio_button_frame,text="Single", variable=self._trust_type, value="2").grid(row=0, column=1)
+        tk.Label(self._radio_button_frame, text="Trust Type: ").grid(row=0, column=0)
+        tk.Radiobutton(self._radio_button_frame,text="Joint", variable=self._trust_type, value="Joint").grid(row=0, column=1)
+        tk.Radiobutton(self._radio_button_frame,text="Single", variable=self._trust_type, value="Single").grid(row=0, column=2)
 
 
         run_btn = tk.Button(self._frame, text="Run", command=self._run_file_organizer)
@@ -54,10 +53,13 @@ class GUI:
 
     def _run_file_organizer(self):
         if self._source_folder:
-            if self._trust_type.get() == "1" or self._trust_type.get() == "2":
-                temp = file_organization.FileOrganization(self._source_folder, self._source_folder)
+            if self._trust_type.get() == "Joint" or self._trust_type.get() == "Single":
+                temp = file_organization.FileOrganization(self._source_folder, self._trust_type.get())
                 if temp.process_files():
                     self._root.destroy()
+                # print(self._trust_type.get())
+                # print("Processing Files")
+                # self._root.destroy()
             else:
                 tk.messagebox.showwarning("Warning", "Please select a trust type!")
         else:

@@ -8,10 +8,11 @@ from tkinter import messagebox
 
 class FileOrganization:
 
-    def __init__(self, source_file_path, dest_file_path):
+    def __init__(self, source_file_path, trust_type):
         self._writer = PdfWriter()
         self._source_file_path = source_file_path
-        self._dest_file_path = dest_file_path
+        self._dest_file_path = source_file_path
+        self._trust_type = trust_type
         os.makedirs(self._dest_file_path, exist_ok=True)
         self._list_word_doc_files = []
         self._spouse_one = ""
