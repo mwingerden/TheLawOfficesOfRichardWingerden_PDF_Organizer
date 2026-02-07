@@ -1,6 +1,8 @@
+from random import choice
+
 import file_organization
 import tkinter as tk
-from tkinter.constants import DISABLED
+from tkinter.constants import DISABLED, NORMAL
 from tkinter.filedialog import askdirectory
 from tkinter import messagebox
 
@@ -13,6 +15,7 @@ class GUI:
         self._dest_btn = None
         self._source_folder = None
         self._dest_folder = None
+        self._trust_type = None
 
     def run_gui(self):
         self._set_up_gui()
@@ -21,38 +24,41 @@ class GUI:
     def _set_up_gui(self):
         self._root.title("Combine Docs")
 
-        frame = tk.Frame(self._root)
-        frame.grid(row=0, column=0, padx=10, pady=10)
+        self._frame = tk.Frame(self._root)
+        self._frame.grid(row=0, column=0, padx=10, pady=10)
 
-        self._source_entry = tk.Entry(frame, width=150)
+        self._source_entry = tk.Entry(self._frame, width=150)
         self._source_entry.grid(row=0, column=0, padx=10, pady=10)
-        source_btn = tk.Button(frame,
+        source_btn = tk.Button(self._frame,
                                text="Find Source Folder",
                                command=lambda: self._find_folder("_source_entry", "_source_folder"))
         source_btn.grid(row=0, column=1)
 
-        self._dest_entry = tk.Entry(frame, width=150)
-        self._dest_entry.grid(row=1, column=0, padx=10, pady=10)
-        dest_btn = tk.Button(frame,
-                             text="Find Destination Folder",
-                             command=lambda: self._find_folder("_dest_entry", "_dest_folder"))
-        dest_btn.grid(row=1, column=1)
+        self._radio_button_frame = tk.Frame(self._frame)
+        self._radio_button_frame.grid(row=1, column=0, padx=10, pady=10)
+        self._trust_type = tk.StringVar(value="-1")
+        tk.Radiobutton(self._radio_button_frame,text="Joint", variable=self._trust_type, value="1").grid(row=0, column=0)
+        tk.Radiobutton(self._radio_button_frame,text="Single", variable=self._trust_type, value="2").grid(row=0, column=1)
 
-        run_btn = tk.Button(frame, text="Run", command=self._run_file_organizer)
-        run_btn.grid(row=2, column=0, padx=10, pady=10)
+
+        run_btn = tk.Button(self._frame, text="Run", command=self._run_file_organizer)
+        run_btn.grid(row=3, column=0, padx=10, pady=10)
 
     def _find_folder(self, entry_widget_attr, folder_attr):
         path = askdirectory()
+        getattr(self, entry_widget_attr).config(state=NORMAL)
         getattr(self, entry_widget_attr).delete(0, tk.END)
-        getattr(self, entry_widget_attr).insert(0, path)
+        getattr(self, entry_widget_attr).insert(0, path.split("/")[-1] + " Folder")
         getattr(self, entry_widget_attr).config(state=DISABLED)
         setattr(self, folder_attr, path)
 
     def _run_file_organizer(self):
-        if self._source_folder and self._dest_folder:
-            temp = file_organization.FileOrganization(self._source_folder, self._dest_folder)
-            if temp.check_files():
-                temp.process_files()
-                self._root.destroy()
+        if self._source_folder:
+            if self._trust_type.get() == "1" or self._trust_type.get() == "2":
+                temp = file_organization.FileOrganization(self._source_folder, self._source_folder)
+                if temp.process_files():
+                    self._root.destroy()
+            else:
+                tk.messagebox.showwarning("Warning", "Please select a trust type!")
         else:
-            tk.messagebox.showwarning("Warning", "Please select both folders!")
+            tk.messagebox.showwarning("Warning", "Please select a folder!")

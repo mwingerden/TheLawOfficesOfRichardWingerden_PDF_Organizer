@@ -37,7 +37,8 @@ class FileOrganization:
         self._find_docx_files()
 
     def process_files(self):
-        if self._find_docx_files() and self._check_files():
+        # if self._find_docx_files() and self._check_files():
+        if self._find_docx_files():
             self._get_spouse_one()
             self._find_rlt()
 
