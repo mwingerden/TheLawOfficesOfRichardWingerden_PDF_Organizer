@@ -59,7 +59,6 @@ class FileOrganization:
         missing_files = []
         extra_files = []
 
-        # count how many files match each base
         counts = Counter(
             base
             for base, _ in self._file_order
