@@ -5,6 +5,7 @@ from pypdf import PdfWriter, PdfReader
 import tempfile
 import tkinter as tk
 from tkinter import messagebox
+from collections import Counter
 
 class FileOrganization:
 
@@ -35,11 +36,11 @@ class FileOrganization:
             ("California Nomination of Guardian", "multi")
         ]
         self._combined_file_name = "Combined.pdf"
-        self._find_docx_files()
+        # self._find_docx_files()
 
     def process_files(self):
-        # if self._find_docx_files() and self._check_files():
-        if self._find_docx_files():
+        if self._find_docx_files() and self._check_files():
+        # if self._find_docx_files():
             self._get_spouse_one()
             self._find_rlt()
 
@@ -55,20 +56,51 @@ class FileOrganization:
             return False
 
     def _check_files(self):
-        missing = [
-            base for base, base_type in self._file_order
-            if not any(filled_file.startswith(base) for filled_file in self._list_word_doc_files)
-        ]
+        missing_files = []
+        extra_files = []
 
-        if not missing:
+        # count how many files match each base
+        counts = Counter(
+            base
+            for base, _ in self._file_order
+            for file in self._list_word_doc_files
+            if file.startswith(base)
+        )
+
+        for base, base_type in self._file_order:
+            required = 0
+            actual = counts.get(base, 0)
+
+            if self._trust_type == "Single":
+                required = 1
+
+            elif self._trust_type == "Joint":
+                required = 2 if base_type == "multi" else 1
+
+            if actual < required:
+                missing_files.append(base)
+            elif actual > required:
+                extra_files.append(base)
+
+        if not missing_files and not extra_files:
             return True
-        else:
-            message = (
-                    "The following required files are missing:\n\n"
-                    + "\n".join(f"• {name}" for name in missing)
+
+        message_parts = []
+
+        if missing_files:
+            message_parts.append(
+                "The following required files are missing:\n\n"
+                + "\n".join(f"• {name}" for name in missing_files)
             )
-            tk.messagebox.showwarning("Warning", message)
-            return False
+
+        if extra_files:
+            message_parts.append(
+                "There are more than one of these files:\n\n"
+                + "\n".join(f"• {name}" for name in extra_files)
+            )
+
+        tk.messagebox.showwarning("Warning", "\n\n".join(message_parts))
+        return False
 
     def _find_docx_files(self):
         if not os.path.exists(self._source_file_path):
@@ -88,7 +120,6 @@ class FileOrganization:
             return True
 
     def _get_spouse_one(self):
-        #TODO: Check for only one cert of trust.
         for file in self._list_word_doc_files:
             if "California Certification of Trust" in file:
                 self._spouse_one = file.removesuffix(".docx").split("_", 1)[1]
@@ -113,9 +144,9 @@ class FileOrganization:
             if file_name.lower() in file.lower():
                 files.append(file)
 
-        pour_over_will_files = self._sort_by_spouse_one(files)
+        sorted_files = self._sort_by_spouse_one(files)
 
-        for file in pour_over_will_files:
+        for file in sorted_files:
             self._copy_file(file)
 
     def _copy_file(self, file):
