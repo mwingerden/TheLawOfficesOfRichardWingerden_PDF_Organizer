@@ -168,3 +168,7 @@ class FileOrganization:
         with open(output_path, "wb") as f:
             self._writer.write(f)
 
+    @property
+    def file_order(self):
+        return self._file_order
+

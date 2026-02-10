@@ -47,7 +47,7 @@ class GUI:
         path = askdirectory()
         getattr(self, entry_widget_attr).config(state=NORMAL)
         getattr(self, entry_widget_attr).delete(0, tk.END)
-        getattr(self, entry_widget_attr).insert(0, path.split("/")[-1] + " Folder")
+        getattr(self, entry_widget_attr).insert(0, f".../{path.split("/")[-2]}/{path.split("/")[-1]}")
         getattr(self, entry_widget_attr).config(state=DISABLED)
         setattr(self, folder_attr, path)
 
