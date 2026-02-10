@@ -2,7 +2,6 @@ import os
 import pytest
 from file_organization import FileOrganization
 
-
 # =========================
 # FIXTURES
 # =========================
@@ -27,27 +26,31 @@ def single_trust_folder(tmp_path):
         "Personal Property Memo_John_Doe.docx",
         "California Nomination of Guardian_John_Doe.docx",
     ]
-
     for f in files:
         (tmp_path / f).touch()
-
     return tmp_path
 
 
 @pytest.fixture
 def joint_trust_folder(tmp_path):
-    file_order = FileOrganization("", "")._file_order
+    file_order = FileOrganization(tmp_path, "Single")._file_order
 
     for base, kind in file_order:
         if kind == "multi":
+            # 2 files for joint
             (tmp_path / f"{base}_Spouse1.docx").touch()
             (tmp_path / f"{base}_Spouse2.docx").touch()
         else:
+            # 1 file for joint single
             (tmp_path / f"{base}.docx").touch()
 
+    # Ensure _get_spouse_one finds spouse
+    # Pick any single file for spouse1 naming convention
+    # For example: "California Certification of Trust_Spouse1.docx"
+    os.remove(tmp_path / "California Certification of Trust.docx")
     (tmp_path / "California Certification of Trust_Spouse1.docx").touch()
-    return tmp_path
 
+    return tmp_path
 
 # =========================
 # INIT
@@ -59,48 +62,51 @@ def test_init_creates_directory(tmp_path):
     assert org._trust_type == "Single"
     assert org._combined_file_name == "Combined.pdf"
 
-
 # =========================
 # FIND DOCX FILES
 # =========================
 
-def test_find_docx_files_success(single_trust_folder):
+def test_find_docx_files_success(single_trust_folder, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
     org = FileOrganization(single_trust_folder, "Single")
     assert org._find_docx_files() is True
 
 
-def test_find_docx_files_no_folder(tmp_path, mocker):
+def test_find_docx_files_no_folder(tmp_path, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
     missing = tmp_path / "missing"
-    mocker.patch("logging.warning")
+    import logging
+    monkeypatch.setattr(logging, "warning", lambda *a, **k: None)
 
     org = FileOrganization(missing, "Single")
     assert org._find_docx_files() is False
 
 
-def test_find_docx_files_empty_folder(tmp_path, mocker):
-    mocker.patch("tkinter.messagebox.showerror")
+def test_find_docx_files_empty_folder(tmp_path, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
     org = FileOrganization(tmp_path, "Single")
     assert org._find_docx_files() is False
-
 
 # =========================
 # CHECK FILES
 # =========================
 
-def test_check_files_single_valid(single_trust_folder):
+def test_check_files_single_valid(single_trust_folder, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showwarning", lambda *a, **k: None)
     org = FileOrganization(single_trust_folder, "Single")
     org._find_docx_files()
     assert org._check_files() is True
 
 
-def test_check_files_joint_valid(joint_trust_folder):
+def test_check_files_joint_valid(joint_trust_folder, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showwarning", lambda *a, **k: None)
     org = FileOrganization(joint_trust_folder, "Joint")
     org._find_docx_files()
     assert org._check_files() is True
 
 
-def test_check_files_missing(single_trust_folder, mocker):
-    mocker.patch("tkinter.messagebox.showwarning")
+def test_check_files_missing(single_trust_folder, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showwarning", lambda *a, **k: None)
     os.remove(single_trust_folder / "Trust Summary.docx")
 
     org = FileOrganization(single_trust_folder, "Single")
@@ -108,8 +114,8 @@ def test_check_files_missing(single_trust_folder, mocker):
     assert org._check_files() is False
 
 
-def test_check_files_extra(single_trust_folder, mocker):
-    mocker.patch("tkinter.messagebox.showwarning")
+def test_check_files_extra(single_trust_folder, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showwarning", lambda *a, **k: None)
     (single_trust_folder / "Trust Summary_COPY.docx").touch()
 
     org = FileOrganization(single_trust_folder, "Single")
@@ -117,8 +123,8 @@ def test_check_files_extra(single_trust_folder, mocker):
     assert org._check_files() is False
 
 
-def test_check_files_missing_and_extra(single_trust_folder, mocker):
-    mocker.patch("tkinter.messagebox.showwarning")
+def test_check_files_missing_and_extra(single_trust_folder, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showwarning", lambda *a, **k: None)
     os.remove(single_trust_folder / "Trust Summary.docx")
     (single_trust_folder / "RLT_EXTRA.docx").touch()
 
@@ -126,19 +132,20 @@ def test_check_files_missing_and_extra(single_trust_folder, mocker):
     org._find_docx_files()
     assert org._check_files() is False
 
-
 # =========================
 # SPOUSE + RLT
 # =========================
 
-def test_get_spouse_one_found(single_trust_folder):
+def test_get_spouse_one_found(single_trust_folder, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
     org = FileOrganization(single_trust_folder, "Single")
     org._find_docx_files()
     org._get_spouse_one()
     assert org._spouse_one == "John_Doe"
 
 
-def test_get_spouse_one_not_found(tmp_path):
+def test_get_spouse_one_not_found(tmp_path, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
     (tmp_path / "Other.docx").touch()
     org = FileOrganization(tmp_path, "Single")
     org._find_docx_files()
@@ -146,20 +153,21 @@ def test_get_spouse_one_not_found(tmp_path):
     assert org._spouse_one == ""
 
 
-def test_find_rlt_found(single_trust_folder):
+def test_find_rlt_found(single_trust_folder, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
     org = FileOrganization(single_trust_folder, "Single")
     org._find_docx_files()
     org._find_rlt()
     assert "RLT" in org._combined_file_name
 
 
-def test_find_rlt_not_found(tmp_path):
+def test_find_rlt_not_found(tmp_path, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
     (tmp_path / "Other.docx").touch()
     org = FileOrganization(tmp_path, "Single")
     org._find_docx_files()
     org._find_rlt()
     assert org._combined_file_name == "Combined.pdf"
-
 
 # =========================
 # SORTING
@@ -182,97 +190,155 @@ def test_sort_by_spouse_one_empty():
     org = FileOrganization("x", "Single")
     assert org._sort_by_spouse_one([]) == []
 
-
 # =========================
 # FIND FILE(S)
 # =========================
 
-def test_find_file_calls_copy(single_trust_folder, mocker):
+def test_find_file_calls_copy(single_trust_folder, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
     org = FileOrganization(single_trust_folder, "Single")
     org._find_docx_files()
-    spy = mocker.patch.object(org, "_copy_file")
+    called = []
 
+    org._copy_file = lambda f: called.append(f)
     org._find_file("Trust Summary")
-    spy.assert_called()
+    assert called
 
 
-def test_find_file_no_match(single_trust_folder, mocker):
+def test_find_file_no_match(single_trust_folder, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
     org = FileOrganization(single_trust_folder, "Single")
     org._find_docx_files()
-    spy = mocker.patch.object(org, "_copy_file")
+    called = []
 
+    org._copy_file = lambda f: called.append(f)
     org._find_file("Does Not Exist")
-    spy.assert_not_called()
+    assert not called
 
 
-def test_find_files_multiple(single_trust_folder, mocker):
+def test_find_files_multiple(single_trust_folder, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
     org = FileOrganization(single_trust_folder, "Single")
     org._find_docx_files()
     org._spouse_one = "John"
-    spy = mocker.patch.object(org, "_copy_file")
+    called = []
 
+    org._copy_file = lambda f: called.append(f)
     org._find_files("Power of Attorney")
-    assert spy.call_count == 1
+    assert len(called) == 1
 
 
-def test_find_files_none(single_trust_folder, mocker):
+def test_find_files_none(single_trust_folder, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
     org = FileOrganization(single_trust_folder, "Single")
     org._find_docx_files()
-    spy = mocker.patch.object(org, "_copy_file")
+    called = []
 
+    org._copy_file = lambda f: called.append(f)
     org._find_files("Nope")
-    spy.assert_not_called()
-
+    assert not called
 
 # =========================
 # COPY FILE
 # =========================
 
-def test_copy_file_adds_pages(single_trust_folder, mocker):
-    mocker.patch("file_organization.convert")
-    reader = mocker.patch("file_organization.PdfReader")
-    reader.return_value.pages = ["p1", "p2"]
+def test_copy_file_adds_pages(single_trust_folder, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
+    monkeypatch.setattr("file_organization.convert", lambda src, dest: None)
 
+    class DummyReader:
+        pages = ["page1", "page2"]
+
+    monkeypatch.setattr("file_organization.PdfReader", lambda path: DummyReader())
+    called_pages = []
     org = FileOrganization(single_trust_folder, "Single")
+    original_add_page = org._writer.add_page
+    org._writer.add_page = lambda page: called_pages.append(page)
     org._copy_file("Trust Summary.docx")
-
-    assert len(org._writer.pages) == 2
+    org._writer.add_page = original_add_page
+    assert len(called_pages) == 2
 
 
 # =========================
 # COMBINE PDFS
 # =========================
 
-def test_combine_pdfs_writes(tmp_path, mocker):
+def test_combine_pdfs_writes(tmp_path):
     org = FileOrganization(tmp_path, "Single")
-    org._writer = mocker.Mock()
+    class DummyWriter:
+        def __init__(self): self.pages = []
+        def write(self, f): self.called = True
+    dummy = DummyWriter()
+    org._writer = dummy
     org._combined_file_name = "Test.docx"
 
     org._combine_pdfs()
-    org._writer.write.assert_called_once()
-
+    assert hasattr(dummy, "called")
 
 # =========================
 # PROCESS FILES
 # =========================
 
-def test_process_files_success(single_trust_folder, mocker):
-    mocker.patch("file_organization.convert")
-    mocker.patch("file_organization.PdfReader", return_value=mocker.Mock(pages=[]))
+def test_process_files_success(single_trust_folder, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
+    monkeypatch.setattr("tkinter.messagebox.showwarning", lambda *a, **k: None)
+    monkeypatch.setattr("file_organization.convert", lambda src, dest: None)
+    class DummyReader:
+        pages = []
+    monkeypatch.setattr("file_organization.PdfReader", lambda path: DummyReader())
 
     org = FileOrganization(single_trust_folder, "Single")
     assert org.process_files() is True
 
 
-def test_process_files_fail_find(single_trust_folder, mocker):
+def test_process_files_fail_find(single_trust_folder, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showwarning", lambda *a, **k: None)
     org = FileOrganization(single_trust_folder, "Single")
-    mocker.patch.object(org, "_find_docx_files", return_value=False)
-
+    org._find_docx_files = lambda: False
     assert org.process_files() is False
 
 
-def test_process_files_fail_check(single_trust_folder, mocker):
+def test_process_files_fail_check(single_trust_folder, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showwarning", lambda *a, **k: None)
     org = FileOrganization(single_trust_folder, "Single")
-    mocker.patch.object(org, "_check_files", return_value=False)
-
+    org._find_docx_files = lambda: True
+    org._check_files = lambda: False
     assert org.process_files() is False
+
+# =========================
+# CHECK FILES - JOINT
+# =========================
+
+def test_check_files_joint_missing(joint_trust_folder, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showwarning", lambda *a, **k: None)
+    # remove one multi file
+    os.remove(joint_trust_folder / "Pour-Over Will_Spouse1.docx")
+
+    org = FileOrganization(joint_trust_folder, "Joint")
+    org._find_docx_files()
+    assert org._check_files() is False
+
+
+def test_get_spouse_one_joint(joint_trust_folder, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
+    org = FileOrganization(joint_trust_folder, "Joint")
+    org._find_docx_files()
+    org._get_spouse_one()
+    assert org._spouse_one == "Spouse1"
+
+# =========================
+# FIND FILES - JOINT
+# =========================
+
+def test_find_files_joint_order(joint_trust_folder, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
+    org = FileOrganization(joint_trust_folder, "Joint")
+    org._find_docx_files()
+    org._spouse_one = "Spouse1"
+
+    called = []
+    org._copy_file = lambda f: called.append(f)
+    org._find_files("Pour-Over Will")  # multi file
+    # check that Spouse1 file is first
+    assert called[0].endswith("Spouse1.docx")
+    assert called[1].endswith("Spouse2.docx")
