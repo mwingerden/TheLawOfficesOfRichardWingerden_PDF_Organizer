@@ -33,7 +33,7 @@ def single_trust_folder(tmp_path):
 
 @pytest.fixture
 def joint_trust_folder(tmp_path):
-    file_order = FileOrganization(tmp_path, "Single")._file_order
+    file_order = FileOrganization(tmp_path, "Single", False)._file_order
 
     for base, kind in file_order:
         if kind == "multi":
@@ -57,7 +57,7 @@ def joint_trust_folder(tmp_path):
 # =========================
 
 def test_init_creates_directory(tmp_path):
-    org = FileOrganization(tmp_path, "Single")
+    org = FileOrganization(tmp_path, "Single", False)
     assert os.path.exists(tmp_path)
     assert org._trust_type == "Single"
     assert org._combined_file_name == "Combined.pdf"
@@ -68,7 +68,7 @@ def test_init_creates_directory(tmp_path):
 
 def test_find_docx_files_success(single_trust_folder, monkeypatch):
     monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
-    org = FileOrganization(single_trust_folder, "Single")
+    org = FileOrganization(single_trust_folder, "Single", False)
     assert org._find_docx_files() is True
 
 
@@ -78,13 +78,13 @@ def test_find_docx_files_no_folder(tmp_path, monkeypatch):
     import logging
     monkeypatch.setattr(logging, "warning", lambda *a, **k: None)
 
-    org = FileOrganization(missing, "Single")
+    org = FileOrganization(missing, "Single", False)
     assert org._find_docx_files() is False
 
 
 def test_find_docx_files_empty_folder(tmp_path, monkeypatch):
     monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
-    org = FileOrganization(tmp_path, "Single")
+    org = FileOrganization(tmp_path, "Single", False)
     assert org._find_docx_files() is False
 
 # =========================
@@ -93,14 +93,14 @@ def test_find_docx_files_empty_folder(tmp_path, monkeypatch):
 
 def test_check_files_single_valid(single_trust_folder, monkeypatch):
     monkeypatch.setattr("tkinter.messagebox.showwarning", lambda *a, **k: None)
-    org = FileOrganization(single_trust_folder, "Single")
+    org = FileOrganization(single_trust_folder, "Single", True)
     org._find_docx_files()
     assert org._check_files() is True
 
 
 def test_check_files_joint_valid(joint_trust_folder, monkeypatch):
     monkeypatch.setattr("tkinter.messagebox.showwarning", lambda *a, **k: None)
-    org = FileOrganization(joint_trust_folder, "Joint")
+    org = FileOrganization(joint_trust_folder, "Joint", True)
     org._find_docx_files()
     assert org._check_files() is True
 
@@ -109,7 +109,7 @@ def test_check_files_missing(single_trust_folder, monkeypatch):
     monkeypatch.setattr("tkinter.messagebox.showwarning", lambda *a, **k: None)
     os.remove(single_trust_folder / "Trust Summary.docx")
 
-    org = FileOrganization(single_trust_folder, "Single")
+    org = FileOrganization(single_trust_folder, "Single", False)
     org._find_docx_files()
     assert org._check_files() is False
 
@@ -118,7 +118,7 @@ def test_check_files_extra(single_trust_folder, monkeypatch):
     monkeypatch.setattr("tkinter.messagebox.showwarning", lambda *a, **k: None)
     (single_trust_folder / "Trust Summary_COPY.docx").touch()
 
-    org = FileOrganization(single_trust_folder, "Single")
+    org = FileOrganization(single_trust_folder, "Single", False)
     org._find_docx_files()
     assert org._check_files() is False
 
@@ -128,7 +128,7 @@ def test_check_files_missing_and_extra(single_trust_folder, monkeypatch):
     os.remove(single_trust_folder / "Trust Summary.docx")
     (single_trust_folder / "RLT_EXTRA.docx").touch()
 
-    org = FileOrganization(single_trust_folder, "Single")
+    org = FileOrganization(single_trust_folder, "Single", False)
     org._find_docx_files()
     assert org._check_files() is False
 
@@ -138,7 +138,7 @@ def test_check_files_missing_and_extra(single_trust_folder, monkeypatch):
 
 def test_get_spouse_one_found(single_trust_folder, monkeypatch):
     monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
-    org = FileOrganization(single_trust_folder, "Single")
+    org = FileOrganization(single_trust_folder, "Single", False)
     org._find_docx_files()
     org._get_spouse_one()
     assert org._spouse_one == "John_Doe"
@@ -147,7 +147,7 @@ def test_get_spouse_one_found(single_trust_folder, monkeypatch):
 def test_get_spouse_one_not_found(tmp_path, monkeypatch):
     monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
     (tmp_path / "Other.docx").touch()
-    org = FileOrganization(tmp_path, "Single")
+    org = FileOrganization(tmp_path, "Single", False)
     org._find_docx_files()
     org._get_spouse_one()
     assert org._spouse_one == ""
@@ -155,7 +155,7 @@ def test_get_spouse_one_not_found(tmp_path, monkeypatch):
 
 def test_find_rlt_found(single_trust_folder, monkeypatch):
     monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
-    org = FileOrganization(single_trust_folder, "Single")
+    org = FileOrganization(single_trust_folder, "Single", False)
     org._find_docx_files()
     org._find_rlt()
     assert "RLT" in org._combined_file_name
@@ -164,7 +164,7 @@ def test_find_rlt_found(single_trust_folder, monkeypatch):
 def test_find_rlt_not_found(tmp_path, monkeypatch):
     monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
     (tmp_path / "Other.docx").touch()
-    org = FileOrganization(tmp_path, "Single")
+    org = FileOrganization(tmp_path, "Single", False)
     org._find_docx_files()
     org._find_rlt()
     assert org._combined_file_name == "Combined.pdf"
@@ -174,20 +174,20 @@ def test_find_rlt_not_found(tmp_path, monkeypatch):
 # =========================
 
 def test_sort_by_spouse_one_prioritizes():
-    org = FileOrganization("x", "Single")
+    org = FileOrganization("x", "Single", False)
     org._spouse_one = "Jane"
     files = ["Doc_John.docx", "Doc_Jane.docx"]
     assert org._sort_by_spouse_one(files)[0] == "Doc_Jane.docx"
 
 
 def test_sort_by_spouse_one_no_match():
-    org = FileOrganization("x", "Single")
+    org = FileOrganization("x", "Single", False)
     files = ["A.docx", "B.docx"]
     assert org._sort_by_spouse_one(files) == files
 
 
 def test_sort_by_spouse_one_empty():
-    org = FileOrganization("x", "Single")
+    org = FileOrganization("x", "Single", False)
     assert org._sort_by_spouse_one([]) == []
 
 # =========================
@@ -196,7 +196,7 @@ def test_sort_by_spouse_one_empty():
 
 def test_find_file_calls_copy(single_trust_folder, monkeypatch):
     monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
-    org = FileOrganization(single_trust_folder, "Single")
+    org = FileOrganization(single_trust_folder, "Single", False)
     org._find_docx_files()
     called = []
 
@@ -207,7 +207,7 @@ def test_find_file_calls_copy(single_trust_folder, monkeypatch):
 
 def test_find_file_no_match(single_trust_folder, monkeypatch):
     monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
-    org = FileOrganization(single_trust_folder, "Single")
+    org = FileOrganization(single_trust_folder, "Single", False)
     org._find_docx_files()
     called = []
 
@@ -218,7 +218,7 @@ def test_find_file_no_match(single_trust_folder, monkeypatch):
 
 def test_find_files_multiple(single_trust_folder, monkeypatch):
     monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
-    org = FileOrganization(single_trust_folder, "Single")
+    org = FileOrganization(single_trust_folder, "Single", False)
     org._find_docx_files()
     org._spouse_one = "John"
     called = []
@@ -230,7 +230,7 @@ def test_find_files_multiple(single_trust_folder, monkeypatch):
 
 def test_find_files_none(single_trust_folder, monkeypatch):
     monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
-    org = FileOrganization(single_trust_folder, "Single")
+    org = FileOrganization(single_trust_folder, "Single", False)
     org._find_docx_files()
     called = []
 
@@ -251,7 +251,7 @@ def test_copy_file_adds_pages(single_trust_folder, monkeypatch):
 
     monkeypatch.setattr("file_organization.PdfReader", lambda path: DummyReader())
     called_pages = []
-    org = FileOrganization(single_trust_folder, "Single")
+    org = FileOrganization(single_trust_folder, "Single", False)
     original_add_page = org._writer.add_page
     org._writer.add_page = lambda page: called_pages.append(page)
     org._copy_file("Trust Summary.docx")
@@ -264,7 +264,7 @@ def test_copy_file_adds_pages(single_trust_folder, monkeypatch):
 # =========================
 
 def test_combine_pdfs_writes(tmp_path):
-    org = FileOrganization(tmp_path, "Single")
+    org = FileOrganization(tmp_path, "Single", False)
     class DummyWriter:
         def __init__(self): self.pages = []
         def write(self, f): self.called = True
@@ -287,20 +287,20 @@ def test_process_files_success(single_trust_folder, monkeypatch):
         pages = []
     monkeypatch.setattr("file_organization.PdfReader", lambda path: DummyReader())
 
-    org = FileOrganization(single_trust_folder, "Single")
+    org = FileOrganization(single_trust_folder, "Single", True)
     assert org.process_files() is True
 
 
 def test_process_files_fail_find(single_trust_folder, monkeypatch):
     monkeypatch.setattr("tkinter.messagebox.showwarning", lambda *a, **k: None)
-    org = FileOrganization(single_trust_folder, "Single")
+    org = FileOrganization(single_trust_folder, "Single", False)
     org._find_docx_files = lambda: False
     assert org.process_files() is False
 
 
 def test_process_files_fail_check(single_trust_folder, monkeypatch):
     monkeypatch.setattr("tkinter.messagebox.showwarning", lambda *a, **k: None)
-    org = FileOrganization(single_trust_folder, "Single")
+    org = FileOrganization(single_trust_folder, "Single", False)
     org._find_docx_files = lambda: True
     org._check_files = lambda: False
     assert org.process_files() is False
@@ -314,14 +314,14 @@ def test_check_files_joint_missing(joint_trust_folder, monkeypatch):
     # remove one multi file
     os.remove(joint_trust_folder / "Pour-Over Will_Spouse1.docx")
 
-    org = FileOrganization(joint_trust_folder, "Joint")
+    org = FileOrganization(joint_trust_folder, "Joint", False)
     org._find_docx_files()
     assert org._check_files() is False
 
 
 def test_get_spouse_one_joint(joint_trust_folder, monkeypatch):
     monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
-    org = FileOrganization(joint_trust_folder, "Joint")
+    org = FileOrganization(joint_trust_folder, "Joint", False)
     org._find_docx_files()
     org._get_spouse_one()
     assert org._spouse_one == "Spouse1"
@@ -332,7 +332,7 @@ def test_get_spouse_one_joint(joint_trust_folder, monkeypatch):
 
 def test_find_files_joint_order(joint_trust_folder, monkeypatch):
     monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
-    org = FileOrganization(joint_trust_folder, "Joint")
+    org = FileOrganization(joint_trust_folder, "Joint", False)
     org._find_docx_files()
     org._spouse_one = "Spouse1"
 

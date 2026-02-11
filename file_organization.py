@@ -1,5 +1,7 @@
 import os
 import logging
+from xml.etree.ElementTree import tostring
+
 from docx2pdf import convert
 from pypdf import PdfWriter, PdfReader
 import tempfile
@@ -9,11 +11,12 @@ from collections import Counter
 
 class FileOrganization:
 
-    def __init__(self, source_file_path, trust_type):
+    def __init__(self, source_file_path, trust_type, guardianship):
         self._writer = PdfWriter()
         self._source_file_path = source_file_path
         self._dest_file_path = source_file_path
         self._trust_type = trust_type
+        self._guardianship = guardianship
         os.makedirs(self._dest_file_path, exist_ok=True)
         self._list_word_doc_files = []
         self._spouse_one = ""
@@ -40,17 +43,16 @@ class FileOrganization:
 
     def process_files(self):
         if self._find_docx_files() and self._check_files():
-        # if self._find_docx_files():
-            self._get_spouse_one()
-            self._find_rlt()
-
-            for doc, doc_type in self._file_order:
-                if doc_type == "single":
-                    self._find_file(doc)
-                else:
-                    self._find_files(doc)
-
-            self._combine_pdfs()
+        #     self._get_spouse_one()
+        #     self._find_rlt()
+        #
+        #     for doc, doc_type in self._file_order:
+        #         if doc_type == "single":
+        #             self._find_file(doc)
+        #         else:
+        #             self._find_files(doc)
+        #
+        #     self._combine_pdfs()
             return True
         else:
             return False
@@ -58,8 +60,8 @@ class FileOrganization:
     def _check_files(self):
         missing_files = []
         extra_files = []
-
-        counts = Counter(
+        counts = Counter({base: 0 for base, _ in self._file_order})
+        counts.update(
             base
             for base, _ in self._file_order
             for file in self._list_word_doc_files
@@ -72,9 +74,12 @@ class FileOrganization:
 
             if self._trust_type == "Single":
                 required = 1
-
             elif self._trust_type == "Joint":
                 required = 2 if base_type == "multi" else 1
+
+            if base == "California Nomination of Guardian":
+                if not self._guardianship:
+                    required = 0
 
             if actual < required:
                 missing_files.append(base)
@@ -84,22 +89,24 @@ class FileOrganization:
         if not missing_files and not extra_files:
             return True
 
-        message_parts = []
+        self._print_file_information(missing_files, extra_files)
+        return False
 
+    def _print_file_information(self, missing_files, extra_files):
+        self._message_parts = []
         if missing_files:
-            message_parts.append(
+            self._message_parts.append(
                 "The following required files are missing:\n\n"
                 + "\n".join(f"• {name}" for name in missing_files)
             )
 
         if extra_files:
-            message_parts.append(
+            self._message_parts.append(
                 "There are more than one of these files:\n\n"
                 + "\n".join(f"• {name}" for name in extra_files)
             )
 
-        tk.messagebox.showwarning("Warning", "\n\n".join(message_parts))
-        return False
+        tk.messagebox.showwarning("Warning", "\n\n".join(self._message_parts))
 
     def _find_docx_files(self):
         if not os.path.exists(self._source_file_path):
