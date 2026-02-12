@@ -342,3 +342,149 @@ def test_find_files_joint_order(joint_trust_folder, monkeypatch):
     # check that Spouse1 file is first
     assert called[0].endswith("Spouse1.docx")
     assert called[1].endswith("Spouse2.docx")
+
+def test_progress_max_callback_called(single_trust_folder, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showwarning", lambda *a, **k: None)
+    monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
+    monkeypatch.setattr("file_organization.convert", lambda s, d: None)
+
+    class DummyReader:
+        pages = []
+    monkeypatch.setattr("file_organization.PdfReader", lambda p: DummyReader())
+
+    max_called = []
+
+    def max_cb(value):
+        max_called.append(value)
+
+    org = FileOrganization(
+        single_trust_folder,
+        "Single",
+        True,
+        max_callback=max_cb
+    )
+
+    org.process_files()
+    assert max_called
+
+def test_progress_callback_called(single_trust_folder, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
+    monkeypatch.setattr("file_organization.convert", lambda s, d: None)
+
+    class DummyReader:
+        pages = []
+    monkeypatch.setattr("file_organization.PdfReader", lambda p: DummyReader())
+
+    progress_calls = []
+
+    def progress_cb(val):
+        progress_calls.append(val)
+
+    org = FileOrganization(
+        single_trust_folder,
+        "Single",
+        True,
+        progress_callback=progress_cb
+    )
+
+    org._find_docx_files()
+    org._get_spouse_one()
+    org._find_rlt()
+    org._find_file("Trust Summary")
+
+    assert progress_calls == [1]
+
+def test_status_callback_called(single_trust_folder, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
+    monkeypatch.setattr("file_organization.convert", lambda s, d: None)
+
+    class DummyReader:
+        pages = []
+    monkeypatch.setattr("file_organization.PdfReader", lambda p: DummyReader())
+
+    status_calls = []
+
+    def status_cb(text):
+        status_calls.append(text)
+
+    org = FileOrganization(
+        single_trust_folder,
+        "Single",
+        True,
+        status_callback=status_cb
+    )
+
+    org._find_docx_files()
+    org._copy_file("Trust Summary.docx")
+
+    assert status_calls
+
+def test_guardianship_not_required(single_trust_folder, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showwarning", lambda *a, **k: None)
+
+    # Remove guardian file (correct filename)
+    os.remove(single_trust_folder / "California Nomination of Guardian_John_Doe.docx")
+
+    org = FileOrganization(single_trust_folder, "Single", False)
+    org._find_docx_files()
+
+    # Should still pass because guardianship False
+    assert org._check_files() is True
+
+def test_logging_on_missing(single_trust_folder, monkeypatch):
+    logs = []
+
+    monkeypatch.setattr("tkinter.messagebox.showwarning", lambda *a, **k: None)
+    monkeypatch.setattr("logging.warning", lambda msg, *a: logs.append(msg))
+
+    os.remove(single_trust_folder / "Trust Summary.docx")
+
+    org = FileOrganization(single_trust_folder, "Single", False)
+    org._find_docx_files()
+    org._check_files()
+
+    assert logs
+
+def test_find_rlt_case_insensitive(tmp_path, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
+
+    (tmp_path / "rlt_Jane_Doe.docx").touch()
+
+    org = FileOrganization(tmp_path, "Single", False)
+    org._find_docx_files()
+    org._find_rlt()
+
+    assert "rlt" in org._combined_file_name.lower()
+
+def test_joint_multi_requires_two(tmp_path, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showwarning", lambda *a, **k: None)
+
+    org_temp = FileOrganization(tmp_path, "Joint", False)
+    for base, kind in org_temp._file_order:
+        if kind == "multi":
+            (tmp_path / f"{base}_Spouse1.docx").touch()
+        else:
+            (tmp_path / f"{base}.docx").touch()
+
+    org = FileOrganization(tmp_path, "Joint", False)
+    org._find_docx_files()
+
+    assert org._check_files() is False
+
+def test_writer_resets(single_trust_folder, monkeypatch):
+    monkeypatch.setattr("tkinter.messagebox.showerror", lambda *a, **k: None)
+    monkeypatch.setattr("tkinter.messagebox.showwarning", lambda *a, **k: None)
+    monkeypatch.setattr("file_organization.convert", lambda s, d: None)
+
+    class DummyReader:
+        pages = []
+    monkeypatch.setattr("file_organization.PdfReader", lambda p: DummyReader())
+
+    org = FileOrganization(single_trust_folder, "Single", True)
+    org.process_files()
+    first_writer = org._writer
+
+    org.process_files()
+    second_writer = org._writer
+
+    assert first_writer is not second_writer

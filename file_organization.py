@@ -1,19 +1,21 @@
 import os
-import logging
-from xml.etree.ElementTree import tostring
-
 from docx2pdf import convert
 from pypdf import PdfWriter, PdfReader
 import tempfile
 import tkinter as tk
 from tkinter import messagebox
 from collections import Counter
+import logging
 
 class FileOrganization:
 
-    def __init__(self, source_file_path, trust_type, guardianship):
+    def __init__(self, source_file_path, trust_type, guardianship,
+                 progress_callback=None, status_callback=None, max_callback=None):
         self._writer = PdfWriter()
+        self._progress_callback = progress_callback
+        self._status_callback = status_callback
         self._source_file_path = source_file_path
+        self._max_callback = max_callback
         self._dest_file_path = source_file_path
         self._trust_type = trust_type
         self._guardianship = guardianship
@@ -39,20 +41,29 @@ class FileOrganization:
             ("California Nomination of Guardian", "multi")
         ]
         self._combined_file_name = "Combined.pdf"
-        # self._find_docx_files()
+        logging.basicConfig(
+            filename=os.path.join(self._source_file_path, "combine_docs.log"),
+            level=logging.INFO,
+            format="%(asctime)s - %(levelname)s - %(message)s",
+        )
 
     def process_files(self):
         if self._find_docx_files() and self._check_files():
-        #     self._get_spouse_one()
-        #     self._find_rlt()
-        #
-        #     for doc, doc_type in self._file_order:
-        #         if doc_type == "single":
-        #             self._find_file(doc)
-        #         else:
-        #             self._find_files(doc)
-        #
-        #     self._combine_pdfs()
+            self._writer = PdfWriter()
+            logging.info("Started processing folder: %s", self._source_file_path)
+            self._get_spouse_one()
+            self._find_rlt()
+            # self._progress_bar["maximum"] = len(self._list_word_doc_files)
+            if self._max_callback:
+                self._max_callback(len(self._list_word_doc_files))
+
+            for doc, doc_type in self._file_order:
+                if doc_type == "single":
+                    self._find_file(doc)
+                else:
+                    self._find_files(doc)
+
+            self._combine_pdfs()
             return True
         else:
             return False
@@ -99,18 +110,21 @@ class FileOrganization:
                 "The following required files are missing:\n\n"
                 + "\n".join(f"• {name}" for name in missing_files)
             )
+            logging.warning("The following required files are missing:\n\n" + "\n".join(f"• {name}" for name in missing_files))
 
         if extra_files:
             self._message_parts.append(
                 "There are more than one of these files:\n\n"
                 + "\n".join(f"• {name}" for name in extra_files)
             )
+            logging.warning("There are more than one of these files:\n\n" + "\n".join(f"• {name}" for name in extra_files))
 
         tk.messagebox.showwarning("Warning", "\n\n".join(self._message_parts))
 
     def _find_docx_files(self):
         if not os.path.exists(self._source_file_path):
             logging.warning("Folder not found: %s", self._source_file_path)
+            return False
         else:
             self._list_word_doc_files = [
                 f for f in os.listdir(self._source_file_path) if f.endswith(".docx")
@@ -121,6 +135,7 @@ class FileOrganization:
                 "Error",
                 "No .docx files were found in the selected folder."
             )
+            # logging.error("No .docx files were found in the selected folder.")
             return False
         else:
             return True
@@ -135,6 +150,7 @@ class FileOrganization:
         for file in self._list_word_doc_files:
             if "RLT".lower() in file.lower():
                 self._combined_file_name = file
+                return
 
     def _sort_by_spouse_one(self, files):
         return sorted(files, key=lambda x: 0 if self._spouse_one in x else 1)
@@ -162,7 +178,20 @@ class FileOrganization:
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
             temp_pdf_path = tmp.name
 
-        convert(src, temp_pdf_path)
+        if self._status_callback:
+            self._status_callback(f"Converting: {file}")
+
+        logging.info("Converting file: %s", file)
+
+        try:
+            convert(src, temp_pdf_path)
+        except Exception as e:
+            messagebox.showerror("Conversion Error", f"Failed to convert {file}:\n{e}")
+            logging.error("Failed to convert %s: %s", file, str(e))
+            return
+
+        if self._progress_callback:
+            self._progress_callback(1)
 
         reader = PdfReader(temp_pdf_path)
         for page in reader.pages:
