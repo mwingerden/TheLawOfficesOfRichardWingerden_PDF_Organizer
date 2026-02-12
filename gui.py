@@ -94,6 +94,12 @@ class GUI:
 
     def _find_folder(self, entry_widget_attr, folder_attr):
         path = askdirectory()
+        if not path:
+            setattr(self, folder_attr, None)
+            getattr(self, entry_widget_attr).config(state=NORMAL)
+            getattr(self, entry_widget_attr).delete(0, tk.END)
+            getattr(self, entry_widget_attr).config(state=DISABLED)
+            return
         getattr(self, entry_widget_attr).config(state=NORMAL)
         getattr(self, entry_widget_attr).delete(0, tk.END)
         getattr(self, entry_widget_attr).insert(0, f".../{path.split("/")[-2]}/{path.split("/")[-1]}")
@@ -108,10 +114,12 @@ class GUI:
 
         if not self._source_folder:
             messagebox.showwarning("Warning", "Please select a folder!")
+            self._enable_disable_gui(self._enable_btn)
             return
 
         if self._trust_type.get() not in ("Joint", "Single"):
             messagebox.showwarning("Warning", "Please select a trust type!")
+            self._enable_disable_gui(self._enable_btn)
             return
 
         thread = threading.Thread(target=self._process_files_thread)

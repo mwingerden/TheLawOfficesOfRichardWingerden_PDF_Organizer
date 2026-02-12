@@ -50,18 +50,24 @@ class FileOrganization:
     def process_files(self):
         if self._find_docx_files() and self._check_files():
             self._writer = PdfWriter()
+
+            with open(os.path.join(self._source_file_path, "combine_docs.log"), "w") as f:
+                f.write("")
+
             logging.info("Started processing folder: %s", self._source_file_path)
             self._get_spouse_one()
             self._find_rlt()
-            # self._progress_bar["maximum"] = len(self._list_word_doc_files)
+
             if self._max_callback:
                 self._max_callback(len(self._list_word_doc_files))
 
             for doc, doc_type in self._file_order:
                 if doc_type == "single":
-                    self._find_file(doc)
+                    if not self._find_file(doc):
+                        return False
                 else:
-                    self._find_files(doc)
+                    if not self._find_files(doc):
+                        return False
 
             self._combine_pdfs()
             return True
@@ -158,7 +164,9 @@ class FileOrganization:
     def _find_file(self, file_name):
         for file in self._list_word_doc_files:
             if file_name.lower() in file.lower():
-                self._copy_file(file)
+                if not self._copy_file(file):
+                    return False
+        return True
 
     def _find_files(self, file_name):
         files = []
@@ -169,7 +177,9 @@ class FileOrganization:
         sorted_files = self._sort_by_spouse_one(files)
 
         for file in sorted_files:
-            self._copy_file(file)
+            if not self._copy_file(file):
+                return False
+        return True
 
     def _copy_file(self, file):
 
@@ -188,7 +198,7 @@ class FileOrganization:
         except Exception as e:
             messagebox.showerror("Conversion Error", f"Failed to convert {file}:\n{e}")
             logging.error("Failed to convert %s: %s", file, str(e))
-            return
+            return False
 
         if self._progress_callback:
             self._progress_callback(1)
@@ -198,13 +208,10 @@ class FileOrganization:
             self._writer.add_page(page)
 
         os.remove(temp_pdf_path)
+        return True
 
     def _combine_pdfs(self):
         output_path = os.path.join(self._dest_file_path, self._combined_file_name.replace(".docx", ".pdf"))
         with open(output_path, "wb") as f:
             self._writer.write(f)
-
-    @property
-    def file_order(self):
-        return self._file_order
 
