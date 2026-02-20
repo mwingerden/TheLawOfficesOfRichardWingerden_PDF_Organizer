@@ -1,9 +1,12 @@
-import file_organization
+import os
+import threading
 import tkinter as tk
+from tkinter import messagebox, ttk
 from tkinter.constants import DISABLED, NORMAL
 from tkinter.filedialog import askdirectory
-from tkinter import messagebox, ttk
-import threading
+
+import file_organization
+
 
 class GUI:
     def __init__(self):
@@ -15,14 +18,13 @@ class GUI:
         self._dest_folder = None
         self._trust_type = None
         self._guardianship = False
-        self._guardianship_button = None
+        self._guardianship_checkbox = None
         self._selected = None
         self._progress_bar = None
         self._status_label = None
         self._enable_btn = "normal"
         self._disable_btn = "disabled"
         self._cancel_requested = False
-
 
     def run_gui(self):
         self._set_up_gui()
@@ -37,9 +39,11 @@ class GUI:
         source_folder_frame.pack(fill="x", padx=5, pady=5)
         self._source_entry = tk.Entry(source_folder_frame, width=100)
         self._source_entry.grid(row=0, column=0)
-        self._source_btn = tk.Button(source_folder_frame,
-                               text="Find Source Folder",
-                               command=lambda: self._find_folder("_source_entry", "_source_folder"))
+        self._source_btn = tk.Button(
+            source_folder_frame,
+            text="Find Source Folder",
+            command=lambda: self._find_folder(self._source_entry)
+        )
         self._source_btn.grid(row=0, column=1, padx=5, pady=5)
 
         trust_type_frame = tk.Frame(self._frame)
@@ -55,10 +59,14 @@ class GUI:
         guardianship_frame.pack(fill="x", padx=5, pady=5)
         tk.Label(guardianship_frame, text="Guardianship?: ").grid(row=0, column=0)
         self._selected = tk.BooleanVar()
-        self._guardianship_button = tk.Checkbutton(guardianship_frame, text="Yes",
-                                                   variable=self._selected, indicatoron=False,
-                                                   width=15, command=self._on_toggle)
-        self._guardianship_button.grid(row=0, column=1)
+        self._guardianship_checkbox = tk.Checkbutton(
+            guardianship_frame,
+            variable=self._selected,
+            onvalue=True,
+            offvalue=False,
+            command=self._on_toggle
+        )
+        self._guardianship_checkbox.grid(row=0, column=1)
 
         self._run_btn = tk.Button(self._frame, text="Run", command=self._run_file_organizer)
         self._run_btn.pack(fill="x", padx=5, pady=5)
@@ -69,7 +77,7 @@ class GUI:
         self._status_label = tk.Label(self._frame, text="Processing...")
         self._status_label.pack(fill="x", padx=10, pady=5)
         self._progress_bar = ttk.Progressbar(self._root, orient="horizontal",
-                                         mode="determinate", length=300)
+                                             mode="determinate", length=300)
         self._progress_bar.pack(fill="x", padx=5, pady=5)
         self._status_label.pack_forget()
         self._progress_bar.pack_forget()
@@ -81,30 +89,34 @@ class GUI:
         self._status_label.config(text="Processing...")
         self._status_label.pack(fill="x", padx=10, pady=5)
         self._progress_bar = ttk.Progressbar(self._root, orient="horizontal",
-                                         mode="determinate", length=300)
+                                             mode="determinate", length=300)
         self._progress_bar.pack(fill="x", padx=5, pady=5)
 
     def _on_toggle(self):
         if self._selected.get():
-            self._guardianship_button.config(background="yellow")
             self._guardianship = True
         else:
-            self._guardianship_button.config(bg="SystemButtonFace")
             self._guardianship = False
 
-    def _find_folder(self, entry_widget_attr, folder_attr):
+    def _find_folder(self, entry_widget):
         path = askdirectory()
+
         if not path:
-            setattr(self, folder_attr, None)
-            getattr(self, entry_widget_attr).config(state=NORMAL)
-            getattr(self, entry_widget_attr).delete(0, tk.END)
-            getattr(self, entry_widget_attr).config(state=DISABLED)
+            self._source_folder = None
+            entry_widget.config(state=NORMAL)
+            entry_widget.delete(0, tk.END)
+            entry_widget.config(state=DISABLED)
             return
-        getattr(self, entry_widget_attr).config(state=NORMAL)
-        getattr(self, entry_widget_attr).delete(0, tk.END)
-        getattr(self, entry_widget_attr).insert(0, f".../{path.split("/")[-2]}/{path.split("/")[-1]}")
-        getattr(self, entry_widget_attr).config(state=DISABLED)
-        setattr(self, folder_attr, path)
+
+        folder_name = os.path.basename(path)
+        parent_folder = os.path.basename(os.path.dirname(path))
+
+        entry_widget.config(state=NORMAL)
+        entry_widget.delete(0, tk.END)
+        entry_widget.insert(0, f".../{parent_folder}/{folder_name}")
+        entry_widget.config(state=DISABLED)
+
+        self._source_folder = path
 
     def _close_application(self):
         self._root.destroy()
@@ -130,7 +142,7 @@ class GUI:
             self._source_btn.config(state=enable_disable.lower())
             self._joint_rb.config(state=enable_disable.lower())
             self._single_rb.config(state=enable_disable.lower())
-            self._guardianship_button.config(state=enable_disable)
+            self._guardianship_checkbox.config(state=enable_disable)
             self._run_btn.config(state=enable_disable.lower())
             self._exit_btn.config(state=enable_disable.lower())
 
