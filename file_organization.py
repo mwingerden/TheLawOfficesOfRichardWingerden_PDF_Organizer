@@ -1,11 +1,14 @@
+import logging
 import os
-from docx2pdf import convert
-from pypdf import PdfWriter, PdfReader
 import tempfile
 import tkinter as tk
-from tkinter import messagebox
 from collections import Counter
-import logging
+from tkinter import messagebox
+
+import pythoncom
+import win32com.client
+from pypdf import PdfWriter, PdfReader
+
 
 class FileOrganization:
 
@@ -48,6 +51,9 @@ class FileOrganization:
         )
 
     def process_files(self):
+        if not self._check_word_installed():
+            return False  # stop processing if Word isn't available
+
         if self._find_docx_files() and self._check_files():
             self._writer = PdfWriter()
 
@@ -72,6 +78,22 @@ class FileOrganization:
             self._combine_pdfs()
             return True
         else:
+            return False
+
+    def _check_word_installed(self):
+        try:
+            pythoncom.CoInitialize()
+            word = win32com.client.Dispatch("Word.Application")
+            word.Quit()
+            pythoncom.CoUninitialize()
+            return True
+        except Exception as e:
+            pythoncom.CoUninitialize()
+            messagebox.showerror(
+                "Microsoft Word Not Found",
+                "Microsoft Word could not be found on this computer.\n"
+                "Please make sure Word is installed and activated."
+            )
             return False
 
     def _check_files(self):
@@ -116,14 +138,16 @@ class FileOrganization:
                 "The following required files are missing:\n\n"
                 + "\n".join(f"• {name}" for name in missing_files)
             )
-            logging.warning("The following required files are missing:\n\n" + "\n".join(f"• {name}" for name in missing_files))
+            logging.warning(
+                "The following required files are missing:\n\n" + "\n".join(f"• {name}" for name in missing_files))
 
         if extra_files:
             self._message_parts.append(
                 "There are more than one of these files:\n\n"
                 + "\n".join(f"• {name}" for name in extra_files)
             )
-            logging.warning("There are more than one of these files:\n\n" + "\n".join(f"• {name}" for name in extra_files))
+            logging.warning(
+                "There are more than one of these files:\n\n" + "\n".join(f"• {name}" for name in extra_files))
 
         tk.messagebox.showwarning("Warning", "\n\n".join(self._message_parts))
 
@@ -194,7 +218,25 @@ class FileOrganization:
         logging.info("Converting file: %s", file)
 
         try:
-            convert(src, temp_pdf_path)
+            # Initialize COM for this thread (important for GUI apps)
+            pythoncom.CoInitialize()
+
+            word = win32com.client.Dispatch("Word.Application")
+            word.Visible = False
+            word.DisplayAlerts = False
+
+            # doc = word.Documents.Open(src)
+            abs_path = os.path.abspath(src)
+            abs_path = abs_path.replace("/", "\\")
+
+            doc = word.Documents.Open(abs_path)
+            doc.SaveAs(temp_pdf_path, FileFormat=17)  # 17 = wdFormatPDF
+            doc.Close(False)
+
+            word.Quit()
+
+            pythoncom.CoUninitialize()
+
         except Exception as e:
             messagebox.showerror("Conversion Error", f"Failed to convert {file}:\n{e}")
             logging.error("Failed to convert %s: %s", file, str(e))
@@ -214,4 +256,3 @@ class FileOrganization:
         output_path = os.path.join(self._dest_file_path, self._combined_file_name.replace(".docx", ".pdf"))
         with open(output_path, "wb") as f:
             self._writer.write(f)
-
